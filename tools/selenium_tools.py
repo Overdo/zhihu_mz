@@ -1,6 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-
+from tools.basic import _get_user_agent
+from tools.logger import Logger
+from tools.net_tools import my_session
 
 
 def _get_driver():
