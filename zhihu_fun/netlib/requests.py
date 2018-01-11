@@ -1,6 +1,6 @@
 import requests
-from tools.basic import _get_cookies, _get_headers
 import shutil
+from ..toollib.basic import _get_headers, _get_cookies
 
 
 def my_session():

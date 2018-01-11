@@ -1,4 +1,4 @@
-from config import config
+from ..config import config
 from http.cookies import SimpleCookie
 
 

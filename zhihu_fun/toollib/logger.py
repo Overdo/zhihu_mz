@@ -1,5 +1,5 @@
 import logging
-from config import config
+from ..config import config
 
 log_level = config.get('log_level')
 

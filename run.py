@@ -1,28 +1,40 @@
-from tools.net_tools import my_session, _get_headers
-from tools.selenium_tools import _get_driver
-from config import config
+from zhihu_fun.go import UrlGenerator, QuestionParser, basedir
+from zhihu_fun.toollib.logger import Logger
+from zhihu_fun.config import config
+from multiprocessing import Queue, Process
+import json
 import os
 
-"""
-1. webdriver模拟拉到页面最底部，获取关键字页面源码内容-->转成bs对象-->匹配到问题的网址，标题
-2. 检测网址是否已经存在，不存在就黑白名单过滤，
-3. 将网址信息添加到数组，将问题信息(包含网址链接，标题等内容)添加到队列 
+
+def url_generator(q):
+    try:
+        g = UrlGenerator(q, keyword_number=config.get('key_number'))
+        g.run(config.get('url_generate_time'))
+    except KeyboardInterrupt:
+        g.driver.close()
+        Logger.warning('Handle KeyboardInterrupt, Stopping app...')
+    except Exception as e:
+        g.driver.close()
+        Logger.warning('Handle Exception {}'.format(e))
+    finally:
+        Logger.info('Summary: {} Record'.format(len(g.info)))
+        Logger.info('Keyword Matched \n' + json.dumps(g.macthed_keys, indent=4, ensure_ascii=False))
+        with open(os.path.join(basedir, 'result.json'), 'w') as json_file:
+            json.dump(g.info, json_file, indent=4, ensure_ascii=False)
+            Logger.info('Dump to File {}'.format(json_file.name))
 
 
-4. 后面的事就是另一个进程从队列里获取问题，读取解析问题，保存到数据库中
-"""
+def question_parser(q):
+    try:
+        qe = QuestionParser(q)
+        qe.run()
+    except Exception as e:
+        qe.driver.close()
+        Logger.warning('Handle Exception {}'.format(e))
 
-urll = 'https://www.zhihu.com/topic/20011035/top-answers?page=1'
 
-session = my_session()
-session.headers = _get_headers()
-ROOTURL = config.get('root_url')
-basedir = os.path.abspath(os.path.dirname(__name__))
-
-# driver = _get_driver()
-from selenium import webdriver
-
-driver = webdriver.Chrome()
-driver.get(config.get('start_url'))
-print(driver.page_source)
-
+if __name__ == '__main__':
+    q = Queue()
+    ps = [Process(target=fn, args=(q,), name=fn.__name__) for fn in (question_parser, url_generator)]
+    [p.start() for p in ps]
+    [p.join() for p in ps]
